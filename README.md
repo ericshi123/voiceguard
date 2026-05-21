@@ -39,6 +39,8 @@ VoiceGuard is built around three core components:
 - **SafetyPolicy** — base class for all policies; subclasses implement `check_input` and `check_output` to return allow/block/redact decisions.
 - **GuardedService** — wraps an OpenAI Realtime API session, intercepts bidirectional audio transcript events, routes them through the `PolicyRegistry`, and enforces decisions before audio is forwarded.
 
+Policy types: `KeywordPolicy`, `TopicBoundaryPolicy`, `LLMClassifierPolicy`, `HarmGuardPolicy`. **HarmGuardPolicy** is a multi-category harm detection policy covering hate speech, abuse, violence, self-harm, and explicit content with tiered severity levels.
+
 ## Evaluation
 
 VoiceGuard evaluations run against a gold set of labeled input/output pairs covering common voice-assistant safety scenarios. HarmBench prompts are adapted for spoken-language context and used as adversarial inputs. Automated judging uses LlamaGuard and WildGuard to score policy decisions at scale, with human review reserved for disagreements between the two judges. Metrics are tracked per policy and per category so regressions surface quickly during development.
