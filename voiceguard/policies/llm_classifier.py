@@ -1,10 +1,11 @@
-"""LLMClassifierPolicy — async OpenAI-backed safety classifier."""
+"""LLMClassifierPolicy — async Anthropic-backed safety classifier."""
 
 from __future__ import annotations
 
 import asyncio
+import os
 
-import openai
+import anthropic
 
 from voiceguard.policy import ALLOW, ConversationContext, PolicyResult
 
@@ -23,7 +24,7 @@ class LLMClassifierPolicy:
         name: Human-readable identifier used in logging and the registry.
         system_prompt: Instruction given to the model describing what "safe" means.
         redirect_message: Message sent to the user when the classifier returns NO.
-        model: OpenAI chat model to use. Defaults to ``"gpt-4o-mini"``.
+        model: Anthropic model to use. Defaults to ``"claude-haiku-3-5"``.
         latency_budget_ms: Maximum milliseconds allowed for the sync wrapper.
                            Defaults to 500.
     """
@@ -33,7 +34,7 @@ class LLMClassifierPolicy:
         name: str,
         system_prompt: str,
         redirect_message: str,
-        model: str = "gpt-4o-mini",
+        model: str = "claude-haiku-3-5",
         latency_budget_ms: int = 500,
     ) -> None:
         self._name = name
@@ -41,7 +42,9 @@ class LLMClassifierPolicy:
         self._redirect_message = redirect_message
         self._model = model
         self._latency_budget_ms = latency_budget_ms
-        self._client = openai.AsyncOpenAI()
+        self._client = anthropic.AsyncAnthropic(
+            api_key=os.environ.get("ANTHROPIC_API_KEY")
+        )
 
     @property
     def name(self) -> str:
@@ -50,8 +53,8 @@ class LLMClassifierPolicy:
     async def check_async(self, text: str, context: ConversationContext) -> PolicyResult:
         """Classify *text* via the LLM and return the appropriate PolicyResult.
 
-        Sends a YES/NO prompt to the configured model. Any answer that does not
-        begin with "YES" is treated as unsafe.
+        Sends a YES/NO prompt to the configured Anthropic model. Any answer that
+        does not begin with "YES" is treated as unsafe.
 
         Args:
             text: The transcript text to evaluate.
@@ -61,10 +64,10 @@ class LLMClassifierPolicy:
         Returns:
             ALLOW when the model responds YES, REDIRECT otherwise.
         """
-        response = await self._client.chat.completions.create(
+        response = await self._client.messages.create(
             model=self._model,
+            system=self._system_prompt,
             messages=[
-                {"role": "system", "content": self._system_prompt},
                 {
                     "role": "user",
                     "content": (
@@ -73,9 +76,8 @@ class LLMClassifierPolicy:
                 },
             ],
             max_tokens=1,
-            temperature=0,
         )
-        answer = (response.choices[0].message.content or "").strip().upper()
+        answer = response.content[0].text.strip().upper()
         if answer.startswith("YES"):
             return ALLOW
         return PolicyResult(action="REDIRECT", redirect_message=self._redirect_message)
