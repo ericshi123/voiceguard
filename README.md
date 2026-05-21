@@ -27,6 +27,10 @@ async with service.session() as session:
     await session.run()
 ```
 
+```
+User Audio → GuardedService → [Input Guardrail Check] → OpenAI Realtime API → [Output Guardrail Check] → User
+```
+
 ## Architecture
 
 VoiceGuard is built around three core components:
@@ -41,4 +45,4 @@ VoiceGuard evaluations run against a gold set of labeled input/output pairs cove
 
 ## Project Status
 
-Phase 1 in progress.
+Phase 1 complete, Phase 2 complete, Phase 3 in progress.
