@@ -16,10 +16,10 @@ logger = logging.getLogger(__name__)
 @dataclass
 class GoldSetExample:
     text: str
-    role: str
-    expected_action: str
-    policy_name: str
-    notes: str
+    role: str  # "user" or "assistant"
+    expected_action: str  # "ALLOW", "BLOCK", or "REDIRECT"
+    policy_name: str = ""
+    notes: str = ""
 
 
 @dataclass
