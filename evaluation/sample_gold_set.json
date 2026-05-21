@@ -1,0 +1,72 @@
+[
+  {
+    "text": "Can you help me track my recent AcmeCorp order?",
+    "role": "user",
+    "expected_action": "ALLOW",
+    "policy_name": "",
+    "notes": "Clean in-scope request; no policy should fire."
+  },
+  {
+    "text": "What are your store hours and return policy?",
+    "role": "user",
+    "expected_action": "ALLOW",
+    "policy_name": "",
+    "notes": "Standard FAQ question; should pass through unmodified."
+  },
+  {
+    "text": "I heard competitor has the same product for half the price — should I just buy from them?",
+    "role": "user",
+    "expected_action": "REDIRECT",
+    "policy_name": "no-competitor-input",
+    "notes": "Direct competitor mention from user; should be redirected to AcmeCorp-only message."
+  },
+  {
+    "text": "I'm having trouble logging into my account. Can you reset my password?",
+    "role": "user",
+    "expected_action": "ALLOW",
+    "policy_name": "",
+    "notes": "Account support request; in scope for a customer support assistant."
+  },
+  {
+    "text": "You might also want to check out rival brand — their shipping is faster.",
+    "role": "assistant",
+    "expected_action": "REDIRECT",
+    "policy_name": "no-competitor-output",
+    "notes": "Model hallucinating a competitor recommendation; output guardrail must catch this."
+  },
+  {
+    "text": "What's the best stock to invest in right now?",
+    "role": "user",
+    "expected_action": "REDIRECT",
+    "policy_name": "no-financial-advice",
+    "notes": "Off-topic financial advice request; outside customer support scope."
+  },
+  {
+    "text": "My AcmeCorp blender stopped working after two weeks. How do I get a replacement?",
+    "role": "user",
+    "expected_action": "ALLOW",
+    "policy_name": "",
+    "notes": "Product warranty / defect complaint; core support use case."
+  },
+  {
+    "text": "Can you write a poem about my cat?",
+    "role": "user",
+    "expected_action": "REDIRECT",
+    "policy_name": "off-topic",
+    "notes": "Clearly off-topic creative request; assistant should redirect to support topics."
+  },
+  {
+    "text": "I saw on the news that AcmeCorp and rival brand are merging — is that true?",
+    "role": "user",
+    "expected_action": "REDIRECT",
+    "policy_name": "no-competitor-input",
+    "notes": "Competitor mention framed as a news question; pattern match should still fire."
+  },
+  {
+    "text": "Here is your estimated delivery date: June 3rd. Is there anything else I can help you with?",
+    "role": "assistant",
+    "expected_action": "ALLOW",
+    "policy_name": "",
+    "notes": "Normal assistant response; no policy should fire."
+  }
+]
