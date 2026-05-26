@@ -188,3 +188,88 @@ async def test_race_condition_input_suppresses_output_guardrail():
     assert session.send_text.call_count == 1
     # truncate_assistant should NOT be called since output was suppressed
     session.truncate_assistant.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Audio delay buffer tests
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_audio_buffer_dropped_on_output_violation():
+    """Audio delta events buffered before a violation fires must be dropped."""
+    events = [
+        make_event("UserSpeechStarted"),
+        # Audio arrives before transcript — should be buffered
+        make_event("response.audio.delta"),
+        make_event("response.audio.delta"),
+        # Transcript violation arrives while audio is still in the buffer
+        make_event(
+            "AssistantTranscriptDelta",
+            delta="the bad word is here",
+            item_id="item-1",
+            audio_end_ms=500,
+        ),
+    ]
+    session = FakeSession(events)
+    # Use a large delay so buffered audio is definitely still waiting
+    svc = GuardedService(session, clean_registry(), redirect_registry(), audio_delay_ms=5000)
+
+    collected = []
+    async for ev in svc.get_events():
+        collected.append(ev)
+
+    await asyncio.sleep(0.05)
+
+    # Violation should have fired
+    session.cancel_response.assert_called_once()
+    session.send_text.assert_called_once_with("Please stay on topic.")
+
+    # No audio delta events should have been yielded
+    audio_types = [e.type for e in collected if "audio" in e.type.lower()]
+    assert audio_types == [], f"Expected no audio events, got: {audio_types}"
+
+
+@pytest.mark.asyncio
+async def test_audio_buffer_yielded_on_clean_turn():
+    """Audio delta events are eventually yielded when no violation fires."""
+    events = [
+        make_event("UserSpeechStarted"),
+        make_event("response.audio.delta"),
+        make_event("response.audio.delta"),
+        make_event("AssistantTranscriptDone", transcript="Helpful response."),
+    ]
+    session = FakeSession(events)
+    # Use a short delay so the test doesn't take long
+    svc = GuardedService(session, clean_registry(), clean_registry(), audio_delay_ms=20)
+
+    collected = []
+    async for ev in svc.get_events():
+        collected.append(ev)
+
+    await asyncio.sleep(0.1)
+
+    session.cancel_response.assert_not_called()
+    session.send_text.assert_not_called()
+
+    # Both audio delta events must have been yielded
+    audio_events = [e for e in collected if "audio" in getattr(e, "type", "").lower()]
+    assert len(audio_events) == 2, f"Expected 2 audio events, got {len(audio_events)}"
+
+
+@pytest.mark.asyncio
+async def test_audio_buffer_disabled_when_delay_zero():
+    """With audio_delay_ms=0, audio events pass through immediately."""
+    events = [
+        make_event("UserSpeechStarted"),
+        make_event("response.audio.delta"),
+        make_event("AssistantTranscriptDone", transcript="Fine."),
+    ]
+    session = FakeSession(events)
+    svc = GuardedService(session, clean_registry(), clean_registry(), audio_delay_ms=0)
+
+    collected = []
+    async for ev in svc.get_events():
+        collected.append(ev)
+
+    types = [e.type for e in collected]
+    assert "response.audio.delta" in types
